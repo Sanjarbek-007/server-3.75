@@ -34,6 +34,7 @@ func main() {
 
 	r.POST("/user/register", registerUser)
 	r.GET("/user/list", listUsers)
+	r.GET("/health", health)
 
 	fmt.Println("Server 1 is running on :8081")
 	if err := r.Run("auth:8081"); err != nil {
@@ -97,4 +98,8 @@ func listUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, users)
+}
+
+func health(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"Server":"OK"})
 }
