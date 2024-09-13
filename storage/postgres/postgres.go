@@ -32,17 +32,17 @@ func CloseDB() {
 }
 
 
-func RegisterUser(username, email string) (int, error) {
-	var userID int
+func RegisterUser(username, email string) (string, error) {
+	var userID string
 	stmt, err := DB.Prepare("INSERT INTO users(username, email) VALUES($1, $2) RETURNING id")
 	if err != nil {
-		return 0, fmt.Errorf("prepare statement error: %v", err)
+		return "", fmt.Errorf("prepare statement error: %v", err)
 	}
 	defer stmt.Close()
 
 	err = stmt.QueryRow(username, email).Scan(&userID)
 	if err != nil {
-		return 0, fmt.Errorf("query row error: %v", err)
+		return "", fmt.Errorf("query row error: %v", err)
 	}
 
 	return userID, nil
@@ -74,7 +74,7 @@ func ListUsers() ([]models.User, error) {
 }
 
 
-func UpdateUser(id int, username, email string) (bool, error) {
+func UpdateUser(id, username, email string) (bool, error) {
 	tx, err := DB.Begin()
 	if err != nil {
 		return false, fmt.Errorf("transaction begin error: %v", err)
@@ -125,7 +125,7 @@ func UpdateUser(id int, username, email string) (bool, error) {
 	return true, nil
 }
 
-func DeleteUser(id int) (bool, error) {
+func DeleteUser(id string) (bool, error) {
 	tx, err := DB.Begin()
 	if err != nil {
 		return false, fmt.Errorf("transaction begin error: %v", err)

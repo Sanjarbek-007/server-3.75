@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
 	"balancer/models"
 	"balancer/storage/postgres"
@@ -61,11 +60,7 @@ func listUsers(c *gin.Context) {
 }
 
 func updateUser(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
+	id := c.Param("id")
 
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -87,11 +82,7 @@ func updateUser(c *gin.Context) {
 }
 
 func deleteUser(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
+	id := c.Param("id")
 
 	updated, err := postgres.DeleteUser(id)
 	if err != nil {
