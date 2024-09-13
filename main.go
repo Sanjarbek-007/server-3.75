@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	err := postgres.InitDB("host=postgres1 port=5432 user=postgres password=1111 dbname=server2_db sslmode=disable")
+	err := postgres.InitDB("host=postgres1 port=5432 user=postgres password=1111 dbname=server1_db sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
