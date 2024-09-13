@@ -1,4 +1,3 @@
-// main.go
 package main
 
 import (
@@ -14,7 +13,7 @@ import (
 )
 
 func main() {
-	err := postgres.InitDB("host=postgres2 port=5432 user=postgres password=1111 dbname=server1_db sslmode=disable")
+	err := postgres.InitDB("host=postgres1 port=5432 user=postgres password=1111 dbname=server2_db sslmode=disable")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -25,11 +24,11 @@ func main() {
 	r.POST("/user/register", registerUser)
 	r.GET("/user/list", listUsers)
 	r.PUT("/user/update/:id", updateUser)
-	r.DELETE("/user/delete/:id", DeleteUser)
+	r.DELETE("/user/delete/:id", deleteUser)
 	r.GET("/health", health)
 
 	fmt.Println("Server is running on :8081")
-	if err := r.Run("auth:8081"); err != nil {
+	if err := r.Run(":8081"); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -87,16 +86,10 @@ func updateUser(c *gin.Context) {
 	}
 }
 
-func DeleteUser(c *gin.Context) {
+func deleteUser(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
-		return
-	}
-
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -114,5 +107,5 @@ func DeleteUser(c *gin.Context) {
 }
 
 func health(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"Server": "OK"})
+	c.JSON(http.StatusOK, gin.H{"status": "OK"})
 }
