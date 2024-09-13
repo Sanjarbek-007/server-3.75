@@ -1,27 +1,26 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 
-	"balancer/models"
 	"balancer/storage/postgres"
 
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	db1 *postgres.DB
-)
+type User struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
 
 func main() {
-	var err error
-
-	db1, err = postgres.InitDB("postgres1", "5432", "postgres", "1111", "server1_db")
-	if err != nil {
+	if err := postgres.InitDB(); err != nil {
 		log.Fatal(err)
 	}
-	defer db1.DB.Close()
 
 	r := gin.Default()
 
@@ -30,21 +29,22 @@ func main() {
 	r.PUT("/user/update/:id", updateUser)
 	r.GET("/health", health)
 
+	fmt.Println("Server is running on :8081")
 	if err := r.Run("auth:8081"); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func registerUser(c *gin.Context) {
-	var user models.User
+	var user User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	err := db1.RegisterUser(&user)
-	if err != nil {
+	if _, err := postgres.RegisterUser(user.Username, user.Email); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("RegisterUser error: %v", err)
 		return
 	}
 
@@ -52,9 +52,10 @@ func registerUser(c *gin.Context) {
 }
 
 func listUsers(c *gin.Context) {
-	users, err := db1.ListUsers()
+	users, err := postgres.ListUsers()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("ListUsers error: %v", err)
 		return
 	}
 
@@ -62,21 +63,18 @@ func listUsers(c *gin.Context) {
 }
 
 func updateUser(c *gin.Context) {
-	id := c.Param("id")
-	var user models.User
+	idd := c.Param("id")
+	id, _ := strconv.Atoi(idd)
+	
+	var user User
 	if err := c.ShouldBindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	rowsAffected, err := db1.UpdateUser(id, &user)
-	if err != nil {
+	if err := postgres.UpdateUser(id, user.Username, user.Email); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		log.Printf("UpdateUser error: %v", err)
 		return
 	}
 

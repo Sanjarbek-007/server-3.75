@@ -3,48 +3,47 @@ package postgres
 import (
 	"balancer/models"
 	"database/sql"
-	"fmt"
 
 	_ "github.com/lib/pq"
 )
 
-type DB struct {
-	DB *sql.DB
-}
+var DB *sql.DB
 
-func InitDB(host, port, user, password, dbname string) (*DB, error) {
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := db.Ping(); err != nil {
-		return nil, err
-	}
-
-	return &DB{DB: db}, nil
-}
-
-
-func (db *DB) RegisterUser(user *models.User) error {
-	stmt, err := db.DB.Prepare("INSERT INTO users(username, email) VALUES($1, $2) RETURNING id")
+func Connect(dsn string) error {
+	var err error
+	DB, err = sql.Open("postgres", dsn)
 	if err != nil {
 		return err
+	}
+	return DB.Ping()
+}
+
+func InitDB() error {
+	dsn := "host=localhost port=5432 user=postgres password=1111 dbname=server1_db sslmode=disable"
+	return Connect(dsn)
+}
+
+func RegisterUser(username, email string) (int, error) {
+	var userID int
+	stmt, err := DB.Prepare("INSERT INTO users(username, email) VALUES($1, $2) RETURNING id")
+	if err != nil {
+		return 0, err
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(user.Username, user.Email).Scan(&user.ID)
+	err = stmt.QueryRow(username, email).Scan(&userID)
 	if err != nil {
-		return err
+		return 0, err
 	}
-
-	return nil
+	return userID, nil
 }
 
-
-func (db *DB) ListUsers() ([]models.User, error) {
-	rows, err := db.DB.Query("SELECT id, username, email FROM users")
+func ListUsers() ([]models.User, error) {
+	rows, err := DB.Query(`
+		SELECT id, username, email FROM users
+		UNION ALL
+		SELECT id, username, email FROM users_server2
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -58,31 +57,64 @@ func (db *DB) ListUsers() ([]models.User, error) {
 		}
 		users = append(users, user)
 	}
-
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
 	return users, nil
 }
 
-
-func (db *DB) UpdateUser(id string, user *models.User) (int64, error) {
-	stmt, err := db.DB.Prepare("UPDATE users SET username=$1, email=$2 WHERE id=$3")
+func UpdateUser(id int, username, email string) error {
+	tx, err := DB.Begin()
 	if err != nil {
-		return 0, err
-	}
-	defer stmt.Close()
-
-	res, err := stmt.Exec(user.Username, user.Email, id)
-	if err != nil {
-		return 0, err
+		return err
 	}
 
-	rowsAffected, err := res.RowsAffected()
+	stmt1, err := tx.Prepare("UPDATE users SET username=$1, email=$2 WHERE id=$3")
 	if err != nil {
-		return 0, err
+		tx.Rollback()
+		return err
+	}
+	defer stmt1.Close()
+
+	res1, err := stmt1.Exec(username, email, id)
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
 
-	return rowsAffected, nil
+	rowsAffected1, err := res1.RowsAffected()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if rowsAffected1 > 0 {
+		return tx.Commit()
+	}
+
+	stmt2, err := tx.Prepare("UPDATE users_server2 SET username=$1, email=$2 WHERE id=$3")
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt2.Close()
+
+	res2, err := stmt2.Exec(username, email, id)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	rowsAffected2, err := res2.RowsAffected()
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if rowsAffected2 == 0 {
+		tx.Rollback()
+		return nil
+	}
+
+	return tx.Commit()
 }
