@@ -34,6 +34,7 @@ func main() {
 
 	r.POST("/user/register", registerUser)
 	r.GET("/user/list", listUsers)
+	r.PUT("/user/update/:id", updateUser)  // Add update route
 	r.GET("/health", health)
 
 	fmt.Println("Server 1 is running on :8081")
@@ -98,6 +99,45 @@ func listUsers(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, users)
+}
+
+func updateUser(c *gin.Context) {
+	id := c.Param("id")
+	var user User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	stmt, err := db.Prepare(`UPDATE users SET username=$1, email=$2 WHERE id=$3;
+							UPDATE users_server2 SET username=$1, email=$2 WHERE id=$3;`)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("Prepare error: %v", err)
+		return
+	}
+	defer stmt.Close()
+
+	res, err := stmt.Exec(user.Username, user.Email, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("Exec error: %v", err)
+		return
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("RowsAffected error: %v", err)
+		return
+	}
+
+	if rowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
 func health(c *gin.Context) {
