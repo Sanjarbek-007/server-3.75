@@ -2,7 +2,8 @@ CREATE EXTENSION postgres_fdw;
 
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    username VARCHAR(50) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    age INTEGER NOT NULL,
     email VARCHAR(100) NOT NULL
 );
 
@@ -11,6 +12,7 @@ CREATE SERVER server2_fdw FOREIGN DATA WRAPPER postgres_fdw OPTIONS (host '3.120
 CREATE USER MAPPING FOR postgres SERVER server2_fdw OPTIONS (user 'postgres', password '1111');
 CREATE FOREIGN TABLE users_server2 (
     id INTEGER,
-    username VARCHAR(50),
+    name VARCHAR(50),
+    age INTEGER,
     email VARCHAR(100)
 ) SERVER server2_fdw OPTIONS (schema_name 'public', table_name 'users');
