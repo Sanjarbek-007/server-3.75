@@ -2,7 +2,7 @@ version: '3.9'
 
 services:
   postgres1:
-    image: postgres:13
+    image: postgres:15
     environment:
       POSTGRES_DB: server2_db 
       POSTGRES_USER: postgres
@@ -17,6 +17,8 @@ services:
       interval: 10s
       retries: 5
       timeout: 5s
+    networks:
+      - app_network
 
   app:
     container_name: auth
@@ -24,9 +26,16 @@ services:
     ports:
       - "8081:8081"
     environment:
-      DATABASE_URL: "host=postgres1 port=5432 user=postgres password=1111 dbname=server2_db sslmode=disable"  # Yangi bazaga moslashgan
+      DATABASE_URL: "host=postgres1 port=5432 user=postgres password=1111 dbname=server2_db sslmode=disable"
     depends_on:
-      - postgres1
+      postgres1:
+        condition: service_healthy
+    networks:
+      - app_network
 
 volumes:
   postgres_data:
+
+networks:
+  app_network:
+    driver: bridge
