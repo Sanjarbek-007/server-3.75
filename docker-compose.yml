@@ -4,38 +4,28 @@ services:
   postgres1:
     image: postgres:13
     environment:
-      POSTGRES_DB: server2_db 
+      POSTGRES_DB: server1_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 1111
+      POSTGRES_PASSWORD: your_password
     ports:
       - "5432:5432"
     volumes:
       - ./init-scripts:/docker-entrypoint-initdb.d
-      - postgres_data:/var/lib/postgresql/data
+      - postgres4_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       retries: 5
       timeout: 5s
-    networks:
-      - app_network
 
   app:
     container_name: auth
     build: .
     ports:
       - "8081:8081"
-    environment:
-      DATABASE_URL: "host=postgres1 port=5432 user=postgres password=1111 dbname=server2_db sslmode=disable"
     depends_on:
       postgres1:
         condition: service_healthy
-    networks:
-      - app_network
 
 volumes:
-  postgres_data:
-
-networks:
-  app_network:
-    driver: bridge
+  postgres4_data:
