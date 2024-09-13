@@ -1,7 +1,7 @@
 version: '3.9'
 
 services:
-  postgres1:
+  postgres2:
     image: postgres:13
     environment:
       POSTGRES_DB: server1_db
@@ -11,7 +11,7 @@ services:
       - "5432:5432"
     volumes:
       - ./init-scripts:/docker-entrypoint-initdb.d
-      - postgres1_data:/var/lib/postgresql/data
+      - postgres2_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -22,9 +22,9 @@ services:
     container_name: auth
     build: .
     ports:
-      - "8081:8081"
+      - "8082:8082"
     depends_on:
-      postgres1:
+      postgres2:
         condition: service_healthy
     environment:
       POSTGRES_HOST: postgres1
@@ -34,4 +34,4 @@ services:
       POSTGRES_DB: server1_db
 
 volumes:
-  postgres1_data:
+  postgres2_data:
