@@ -31,7 +31,6 @@ func CloseDB() {
 	}
 }
 
-
 func RegisterUser(username, email string) (string, error) {
 	var userID string
 	stmt, err := DB.Prepare("INSERT INTO users(username, email) VALUES($1, $2) RETURNING id")
@@ -73,7 +72,6 @@ func ListUsers() ([]models.User, error) {
 	return users, nil
 }
 
-
 func UpdateUser(id, username, email string) (bool, error) {
 	stmt1, err := DB.Prepare("UPDATE users SET username=$1, email=$2 WHERE id=$3")
 	if err != nil {
@@ -86,26 +84,24 @@ func UpdateUser(id, username, email string) (bool, error) {
 		return false, fmt.Errorf("execute statement error for server 2: %v", err)
 	}
 
-	stmt2, err := DB.Prepare("UPDATE users_server2 SET username=$1, email=$2 WHERE id=$3")
-	if err != nil {
-		return false, fmt.Errorf("prepare statement error for server 1: %v", err)
-	}
-	defer stmt2.Close()
-
-	res2, err := stmt2.Exec(username, email, id)
-	if err != nil {
-		return false, fmt.Errorf("execute statement error for server 1: %v", err)
-	}
-
 	rowsAffected1, err := res1.RowsAffected()
 	if err != nil || rowsAffected1 == 0 {
-		return false, fmt.Errorf("no rows affected for server 2")
+		stmt2, err := DB.Prepare("UPDATE users_server2 SET username=$1, email=$2 WHERE id=$3")
+		if err != nil {
+			return false, fmt.Errorf("prepare statement error for server 1: %v", err)
+		}
+		defer stmt2.Close()
+
+		res2, err := stmt2.Exec(username, email, id)
+		if err != nil {
+			return false, fmt.Errorf("execute statement error for server 1: %v", err)
+		}
+		rowsAffected2, err := res2.RowsAffected()
+		if err != nil || rowsAffected2 == 0 {
+			return false, fmt.Errorf("no rows affected")
+		}
 	}
 
-	rowsAffected2, err := res2.RowsAffected()
-	if err != nil || rowsAffected2 == 0 {
-		return false, fmt.Errorf("no rows affected for server 1")
-	}
 	return true, nil
 }
 
@@ -121,25 +117,23 @@ func DeleteUser(id string) (bool, error) {
 		return false, fmt.Errorf("execute statement error for server 1: %v", err)
 	}
 
-	stmt2, err := DB.Prepare("DELETE FROM users_server2 WHERE id=$1")
-	if err != nil {
-		return false, fmt.Errorf("prepare statement error for server 1: %v", err)
-	}
-	defer stmt2.Close()
-
-	res2, err := stmt2.Exec(id)
-	if err != nil {
-		return false, fmt.Errorf("execute statement error for server 1: %v", err)
-	}
-
 	rowsAffected1, err := res1.RowsAffected()
 	if err != nil || rowsAffected1 == 0 {
-		return false, fmt.Errorf("no rows affected for server 2")
-	}
+		stmt2, err := DB.Prepare("DELETE FROM users_server2 WHERE id=$1")
+		if err != nil {
+			return false, fmt.Errorf("prepare statement error for server 1: %v", err)
+		}
+		defer stmt2.Close()
 
-	rowsAffected2, err := res2.RowsAffected()
-	if err != nil || rowsAffected2 == 0 {
-		return false, fmt.Errorf("no rows affected for server 1")
+		res2, err := stmt2.Exec(id)
+		if err != nil {
+			return false, fmt.Errorf("execute statement error for server 1: %v", err)
+		}
+		rowsAffected2, err := res2.RowsAffected()
+		if err != nil || rowsAffected2 == 0 {
+			return false, fmt.Errorf("no rows affected for server 1")
+		}
+
 	}
 
 	return true, nil
