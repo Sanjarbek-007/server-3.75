@@ -2,11 +2,11 @@ version: '3.9'
 
 services:
   postgres1:
-    image: postgres:13
+    image: postgres:15
     environment:
       POSTGRES_DB: server1_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_password
+      POSTGRES_PASSWORD: 1111
     ports:
       - "5432:5432"
     volumes:
