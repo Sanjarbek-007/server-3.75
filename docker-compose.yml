@@ -27,7 +27,7 @@ services:
       postgres2:
         condition: service_healthy
     environment:
-      POSTGRES_HOST: postgres1
+      POSTGRES_HOST: postgres2
       POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 1111
