@@ -109,36 +109,90 @@ func updateUser(c *gin.Context) {
 		return
 	}
 
-	stmt, err := db.Prepare(`UPDATE users SET username=$1, email=$2 WHERE id=$3;
-							UPDATE users_server2 SET username=$1, email=$2 WHERE id=$3;`)
+	tx, err := db.Begin()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		log.Printf("Prepare error: %v", err)
+		log.Printf("Transaction Begin error: %v", err)
 		return
 	}
-	defer stmt.Close()
 
-	res, err := stmt.Exec(user.Username, user.Email, id)
+	stmt1, err := tx.Prepare("UPDATE users SET username=$1, email=$2 WHERE id=$3")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		log.Printf("Exec error: %v", err)
+		log.Printf("Prepare error for server 1: %v", err)
+		tx.Rollback()
 		return
 	}
+	defer stmt1.Close()
 
-	rowsAffected, err := res.RowsAffected()
+	res1, err := stmt1.Exec(user.Username, user.Email, id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		log.Printf("RowsAffected error: %v", err)
+		log.Printf("Exec error for server 1: %v", err)
+		tx.Rollback()
 		return
 	}
 
-	if rowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+	rowsAffected1, err := res1.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("RowsAffected error for server 1: %v", err)
+		tx.Rollback()
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+	if rowsAffected1 > 0 {
+		if err := tx.Commit(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			log.Printf("Commit error: %v", err)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "User updated successfully in server 1"})
+		return
+	}
+
+	stmt2, err := tx.Prepare("UPDATE users_server2 SET username=$1, email=$2 WHERE id=$3")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("Prepare error for server 2: %v", err)
+		tx.Rollback()
+		return
+	}
+	defer stmt2.Close()
+
+	res2, err := stmt2.Exec(user.Username, user.Email, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("Exec error for server 2: %v", err)
+		tx.Rollback()
+		return
+	}
+
+	rowsAffected2, err := res2.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("RowsAffected error for server 2: %v", err)
+		tx.Rollback()
+		return
+	}
+
+	if rowsAffected2 == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "User not found in either database"})
+		tx.Rollback()
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		log.Printf("Commit error: %v", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully in server 2"})
 }
+
+
 
 func health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"Server":"OK"})
