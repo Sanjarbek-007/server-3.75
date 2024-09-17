@@ -4,6 +4,7 @@ WORKDIR /app
 
 COPY go.mod ./
 COPY go.sum ./
+RUN go install github.com/moderato-app/live-pprof@v1
 RUN go mod download
 
 COPY . .

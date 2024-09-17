@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	_ "github.com/lib/pq"
+	_ "net/http/pprof"
 )
 
 var DB *sql.DB
